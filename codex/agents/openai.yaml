@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Review Loop"
+  short_description: "Plan-first 方案双审、代码审查与文档同步工作流"
+  default_prompt: "Use $plan-review-implement-loop to handle this engineering requirement with planning documents, parallel architecture review, implementation, code review, and synchronized document updates."
