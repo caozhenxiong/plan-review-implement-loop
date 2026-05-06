@@ -32,21 +32,19 @@ rsync -a --delete codex/ "$HOME/.codex/skills/plan-review-implement-loop/"
 rsync -a codex-agents/*.toml "$HOME/.codex/agents/"
 ```
 
-如果你的用户名不是 `linus`，需要把 skill 内的个人绝对路径替换为当前 `$HOME`：
+安装脚本使用 `$HOME` 路径，无需修改用户名。如果你从旧版迁移过来，可用下面命令把旧的绝对路径替换为当前用户目录：
 
 ```bash
 find "$HOME/.codex/skills/plan-review-implement-loop" "$HOME/.codex/agents" \
   -type f \( -name '*.md' -o -name '*.toml' -o -name '*.yaml' -o -name '*.py' \) \
-  -exec perl -pi -e "s#/Users/linus#$ENV{HOME}#g" {} +
+  -exec perl -pi -e 's#/Users/[^/]+#$ENV{HOME}#g' {} +
 ```
 
 使用方式：
 
 ```text
-[$plan-review-implement-loop](/Users/linus/.codex/skills/plan-review-implement-loop/SKILL.md)
+Use skill plan-review-implement-loop.
 ```
-
-非 `linus` 用户应把上面的路径替换为自己的 `$HOME`。
 
 ## 安装到 Claude Code
 
@@ -60,12 +58,12 @@ mkdir -p "$HOME/.claude/skills"
 rsync -a --delete claude-code/ "$HOME/.claude/skills/plan-review-implement-loop-claude-code/"
 ```
 
-如果你的用户名不是 `linus`，同样建议替换文档内个人绝对路径：
+安装脚本使用 `$HOME` 路径，无需修改用户名。如果你从旧版迁移过来，可用下面命令把旧的绝对路径替换为当前用户目录：
 
 ```bash
 find "$HOME/.claude/skills/plan-review-implement-loop-claude-code" \
   -type f \( -name '*.md' -o -name '*.py' \) \
-  -exec perl -pi -e "s#/Users/linus#$ENV{HOME}#g" {} +
+  -exec perl -pi -e 's#/Users/[^/]+#$ENV{HOME}#g' {} +
 ```
 
 使用方式：
@@ -97,4 +95,3 @@ docs/superpowers/plans/YYYY-MM-DD-<topic>.md
 - 文档正文发生实质变化后，必须重新冻结 `spec_rev + plan_rev` 并全量双审。
 - prior-open issue 只用于 continuity，不缩小复审范围。
 - 代码审查必须核对实现是否严格符合 `spec`、`plan` 和 checklist。
-

@@ -22,7 +22,7 @@
 
 `plan_rev` 不再允许靠“自然语言理解后自行实现”的归一化逻辑计算。默认采用 `plan_rev_contract_id = plan-rev/v1`，并要求优先复用唯一参考实现：
 
-- `/Users/linus/Obsidian/Skills/plan-review-implement-loop-claude-code/references/compute_plan_rev.py`
+- `$HOME/.claude/skills/plan-review-implement-loop-claude-code/references/compute_plan_rev.py`
 
 只要该脚本可用，主 agent 就必须使用它生成 `plan_rev`；不得自行实现一个“看起来等价”的版本。
 

@@ -4,9 +4,9 @@
 
 这是一个本地个人 skill，默认运行在当前 Codex 环境，并固定依赖以下本地 agent：
 
-- `/Users/linus/.codex/agents/architect_reviewer.toml`
-- `/Users/linus/.codex/agents/architecture_challenger.toml`
-- `/Users/linus/.codex/agents/reviewer.toml`
+- `$HOME/.codex/agents/architect_reviewer.toml`
+- `$HOME/.codex/agents/architecture_challenger.toml`
+- `$HOME/.codex/agents/reviewer.toml`
 
 ## Agent Slot Reuse
 
@@ -73,7 +73,7 @@
 
 `plan_rev` 不再允许靠“自然语言理解后自行实现”的归一化逻辑计算。默认采用 `plan_rev_contract_id = plan-rev/v1`，并要求优先复用唯一参考实现：
 
-- `/Users/linus/.codex/skills/plan-review-implement-loop/references/compute_plan_rev.py`
+- `$HOME/.codex/skills/plan-review-implement-loop/references/compute_plan_rev.py`
 
 只要该脚本可用，主 agent 就必须使用它生成 `plan_rev`；不得自行实现一个“看起来等价”的版本。
 
@@ -396,7 +396,7 @@ phase preflight 必须按阶段执行，不允许使用一份通用清单硬套�
 通用 “实施计划 / PLEASE IMPLEMENT THIS PLAN” 动作会开启新一轮消息，因此不能假设下一轮自动继承当前 skill。
 
 - 阶段 1 和普通 phase 2 blocked round 不允许输出 `<proposed_plan>`；除非缺少关键输入或命中人工升级条件，否则主 agent 应继续同一轮推进，而不是把 blocked 状态交给用户点击
-- 任何会被下一轮继续消费的 handoff、确认提示、执行计划摘要或 `<proposed_plan>` 内容，都必须显式包含 `[$plan-review-implement-loop](/Users/linus/.codex/skills/plan-review-implement-loop/SKILL.md)`
+- 任何会被下一轮继续消费的 handoff、确认提示、执行计划摘要或 `<proposed_plan>` 内容，都必须显式包含 `[$plan-review-implement-loop]($HOME/.codex/skills/plan-review-implement-loop/SKILL.md)`
 - handoff 必须把当前 gate state 写成显式字段，至少包括：
   - `current_phase`
   - `gate_state`
@@ -616,7 +616,7 @@ fail-closed 规则：
 
 ### `@architect_reviewer`
 
-使用本地 agent：`/Users/linus/.codex/agents/architect_reviewer.toml`
+使用本地 agent：`$HOME/.codex/agents/architect_reviewer.toml`
 
 优先复用当前会话内既有的 `architect_reviewer` agent 槽；仅在 `Agent Slot Reuse` 允许的例外条件下才新开。
 
@@ -679,7 +679,7 @@ Requirements:
 
 ### `@architecture_challenger`
 
-使用本地 agent：`/Users/linus/.codex/agents/architecture_challenger.toml`
+使用本地 agent：`$HOME/.codex/agents/architecture_challenger.toml`
 
 优先复用当前会话内既有的 `architecture_challenger` agent 槽；仅在 `Agent Slot Reuse` 允许的例外条件下才新开。
 
@@ -738,7 +738,7 @@ Requirements:
 
 ### `@reviewer`
 
-使用本地 agent：`/Users/linus/.codex/agents/reviewer.toml`
+使用本地 agent：`$HOME/.codex/agents/reviewer.toml`
 
 优先复用当前会话内既有的 `reviewer` agent 槽；仅在 `Agent Slot Reuse` 允许的例外条件下才新开。
 

@@ -41,9 +41,9 @@ plan-review-implement-loop-claude-code/
 
 Claude Code 版额外提供：
 
-- [reviewer-role-prompts.md](/Users/linus/Obsidian/Skills/plan-review-implement-loop-claude-code/references/reviewer-role-prompts.md)
+- [reviewer-role-prompts.md]($HOME/.claude/skills/plan-review-implement-loop-claude-code/references/reviewer-role-prompts.md)
 
-这个文件不是单独生效的协议副本，而是供 [workflow-contract.md](/Users/linus/Obsidian/Skills/plan-review-implement-loop-claude-code/references/workflow-contract.md) 的正式 dispatch templates 强制加载的角色卡。
+这个文件不是单独生效的协议副本，而是供 [workflow-contract.md]($HOME/.claude/skills/plan-review-implement-loop-claude-code/references/workflow-contract.md) 的正式 dispatch templates 强制加载的角色卡。
 
 理解方式：
 
@@ -53,15 +53,15 @@ Claude Code 版额外提供：
 
 ## 安装方式
 
-推荐把整个目录链接到 Claude Code 的技能目录：
+推荐从仓库根目录复制到 Claude Code 的技能目录：
 
 ```bash
 mkdir -p ~/.claude/skills
-ln -s "/Users/linus/Obsidian/Skills/plan-review-implement-loop-claude-code" \
-  "$HOME/.claude/skills/plan-review-implement-loop-claude-code"
+rsync -a --delete claude-code/ \
+  "$HOME/.claude/skills/plan-review-implement-loop-claude-code/"
 ```
 
-如果已经存在同名目录，先处理旧目录或改成别名目录名。
+如果已经存在同名目录，`rsync --delete` 会让安装目录与仓库版本保持一致。
 
 ## Plan Mode 支持
 

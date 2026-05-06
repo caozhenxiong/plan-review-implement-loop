@@ -27,7 +27,7 @@ description: 当工程任务要求先冻结需求与方案文档、再用固定�
 ## Hard Gates
 
 - 只由主 agent 执行此技能。不要要求 `@architect_reviewer`、`@architecture_challenger` 或 `@reviewer` 先进入 `using-superpowers`。
-- 这是一个本地 skill：固定绑定 `/Users/linus/.codex/agents/architect_reviewer.toml`、`/Users/linus/.codex/agents/architecture_challenger.toml`、`/Users/linus/.codex/agents/reviewer.toml`。如果这些本地 agent 不可用，直接阻塞。
+- 这是一个本地 skill：固定绑定 `$HOME/.codex/agents/architect_reviewer.toml`、`$HOME/.codex/agents/architecture_challenger.toml`、`$HOME/.codex/agents/reviewer.toml`。如果这些本地 agent 不可用，直接阻塞。
 - 在 Codex 运行时，方案双审与代码审查都应优先复用既有 agent 槽：`architect_reviewer`、`architecture_challenger`、`reviewer`。同一会话内同一角色已有可用 agent 时，优先继续向该 agent 槽派发，而不是重复新开同角色 agent。
 - 每个大阶段开始前，主 agent 都要先做一次基于 `using-superpowers` 纪律的 phase preflight checklist。它只是阶段检查单，不是重新调用 `using-superpowers`，也不是重新进入顶层 skill 路由，更不能再次激活 `plan-review-implement-loop` 自身。
 - 第一个阶段优先进入显式 Plan Mode。若运行时没有显式 Plan Mode，执行本 skill 内部定义的封闭规划子流程：`brainstorming` 只用于探索，`writing-plans` 只用于计划写作约束，阶段控制权始终留在当前 skill，且唯一出口固定为阶段 2。
@@ -42,7 +42,7 @@ description: 当工程任务要求先冻结需求与方案文档、再用固定�
 - `BLOCKED` 在本 skill 里默认表示“阻塞实现”，不是“阻塞继续出下一版方案”。只要仍能通过修改 `spec + plan` 收敛问题，就应继续留在方案回环里推进。
 - 在本 skill 里，任何 UI 动作如“实施计划”“实施此计划”“开始执行”，都默认解释为“继续按下一道门禁推进”，不是无条件进入实现阶段。
 - 阶段 1 写完 canonical `spec + plan` 后，主 agent 必须在同一轮直接进入 phase 2；不得把阶段 1 结果作为可执行 implementation handoff、`<proposed_plan>`、或任何会生成“实施此方案”按钮的最终输出交给用户。
-- 任何可能被下一轮通用“实施计划 / PLEASE IMPLEMENT THIS PLAN”动作消费的用户可见 handoff、确认提示或 `<proposed_plan>`，都必须显式包含 `[$plan-review-implement-loop](/Users/linus/.codex/skills/plan-review-implement-loop/SKILL.md)`，不得假设下一轮会自动继承当前 skill。
+- 任何可能被下一轮通用“实施计划 / PLEASE IMPLEMENT THIS PLAN”动作消费的用户可见 handoff、确认提示或 `<proposed_plan>`，都必须显式包含 `[$plan-review-implement-loop]($HOME/.codex/skills/plan-review-implement-loop/SKILL.md)`，不得假设下一轮会自动继承当前 skill。
 - 每一轮评审都必须绑定不可变的冻结快照：`review_round`、`spec_rev`、`plan_rev`，以及代码审查所需的 `code_rev`。其中 `review_round` 是单调递增整数；`spec_rev`、`plan_rev`、`code_rev` 才是内容寻址版本。
 - 主 agent 派发评审时，必须提供与 `spec_rev` / `plan_rev` / `code_rev` 一致的权威快照；原始文件路径只用于审计，不作为门禁判定依据。若做不到这一点，自动流程直接阻塞。
 - 任一评审结果缺少结构化头部、字段值不明确、返回的 `artifact_version` 与当前冻结快照不一致、或 issue 身份无法稳定追踪时，一律阻塞，不得放行。
@@ -116,7 +116,7 @@ description: 当工程任务要求先冻结需求与方案文档、再用固定�
 - 用户在实现确认点确认开始实现时，默认同时接受当前同一组 `spec_rev + plan_rev` 上仍未关闭的 `low-risk`；这些问题必须以 `accepted` 语义写回 `Review Ledger`，不能记成 `fixed`。
 - 如果 UI 在阶段 1 或阶段 2 出现“实施计划”之类的按钮，且最新一轮双审尚未清空中/高风险，主 agent 必须把它解释为“先更新 canonical 双文档并继续阶段 2 方案双审”；如果双审已经通过，则下一步是实现确认点，而不是直接写代码。
 - phase 1 和普通 phase 2 blocked round 都不得输出可直接消费的 `<proposed_plan>` 或等价 implementation handoff；只有到达实现确认点后，才允许输出面向“确认是否开始实现”的 handoff。
-- 任何面向下一轮的 handoff、计划摘要或确认提示，都必须先写明当前 gate state、下一道允许的门禁动作，以及“此 handoff 必须继续在 `[$plan-review-implement-loop](/Users/linus/.codex/skills/plan-review-implement-loop/SKILL.md)` 下执行”。如果缺少这三项，不得把它当作可执行 handoff 发给用户。
+- 任何面向下一轮的 handoff、计划摘要或确认提示，都必须先写明当前 gate state、下一道允许的门禁动作，以及“此 handoff 必须继续在 `[$plan-review-implement-loop]($HOME/.codex/skills/plan-review-implement-loop/SKILL.md)` 下执行”。如果缺少这三项，不得把它当作可执行 handoff 发给用户。
 
 ### 3. 实现
 
@@ -139,7 +139,7 @@ description: 当工程任务要求先冻结需求与方案文档、再用固定�
 - 先做阶段 4 的 phase preflight checklist。
 - 在一轮实现完成后，冻结代码快照：固定 `review_round`、`spec_rev`、`plan_rev`、`code_rev`。若 git 不能唯一标识当前代码内容，就改用当前被审代码集合的内容哈希。
 - 阶段 4 preflight 必须先确认：当前 `code_rev` 对应的两份文档都已经同步更新；若任一文档落后于当前代码修改，先回到阶段 3 补文档，再允许审查。
-- 使用本地 `@reviewer` 审查最新代码；它的 agent 定义来自 `/Users/linus/.codex/agents/reviewer.toml`。
+- 使用本地 `@reviewer` 审查最新代码；它的 agent 定义来自 `$HOME/.codex/agents/reviewer.toml`。
 - `@reviewer` 必须把当前实现逐条对照 canonical `spec`、去账本后的 canonical `plan`、以及已确认的 `Plan Compliance Checklist`（如适用）检查；代码是否严格遵守规范、设计和 checklist 是硬门禁，不是可选建议。
 - 任一实现偏离 `spec` / `plan` / checklist、保留应删除旧路径、绕过 fail-closed、或用兼容 fallback 替代新协议，都必须作为结构化 issue 返回；测试通过不能抵消设计不合规。
 - 代码审查必须检查每个改动是否能追溯到请求、`spec`、`plan` 或 checklist；无关修改、顺手清理、未要求的抽象或配置化应作为 scope violation 或明确的非阻塞 prose 记录，不能静默通过。

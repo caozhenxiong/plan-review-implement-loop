@@ -157,14 +157,14 @@
 
 ```bash
 rg -n "architect_reviewer|architecture_challenger|reviewer" \
-  /Users/linus/.codex/agents \
-  /Users/linus/.codex/skills/plan-review-implement-loop/references/workflow-contract.md \
-  /Users/linus/Obsidian/Skills/plan-review-implement-loop-claude-code/references
+  $HOME/.codex/agents \
+  $HOME/.codex/skills/plan-review-implement-loop/references/workflow-contract.md \
+  $HOME/.claude/skills/plan-review-implement-loop-claude-code/references
 
 rg -n "Prior open issue IDs|Anchor remap|same reviewer_issue_id|continuity|design_affecting" \
-  /Users/linus/.codex/skills/plan-review-implement-loop/references/workflow-contract.md \
-  /Users/linus/Obsidian/Skills/plan-review-implement-loop-claude-code/references/workflow-contract.md \
-  /Users/linus/Obsidian/Skills/plan-review-implement-loop-claude-code/references/reviewer-role-prompts.md
+  $HOME/.codex/skills/plan-review-implement-loop/references/workflow-contract.md \
+  $HOME/.claude/skills/plan-review-implement-loop-claude-code/references/workflow-contract.md \
+  $HOME/.claude/skills/plan-review-implement-loop-claude-code/references/reviewer-role-prompts.md
 ```
 
 lint 通过标准：
