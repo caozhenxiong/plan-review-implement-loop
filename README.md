@@ -15,6 +15,7 @@
 - 严格门禁：中/高风险未清前不得实现；代码审查发现 `design_affecting` 问题时必须回到方案双审。
 - 稳定追踪：`Review Ledger` 使用 issue 级明细，按 `issue_id` 追踪跨轮问题。
 - 稳定哈希：`plan_rev` 使用 `plan-rev/v1`，排除 `Review Ledger` 和 `Execution State`。
+- 可执行门禁：`shared/` 提供模板、schema 和本地脚本，用于冻结快照、提取 reviewer JSON、校验评审结果和计算 gate state。
 - 行为原则：分层吸收 Karpathy Guidelines，要求先想清楚、简单优先、精确改动、目标驱动。
 
 ## 安装到 Codex
@@ -29,15 +30,17 @@ mkdir -p "$HOME/.codex/skills/plan-review-implement-loop"
 mkdir -p "$HOME/.codex/agents"
 
 rsync -a --delete codex/ "$HOME/.codex/skills/plan-review-implement-loop/"
+rsync -a --delete shared/ "$HOME/.codex/skills/plan-review-implement-loop/shared/"
 rsync -a codex-agents/*.toml "$HOME/.codex/agents/"
 ```
 
 安装脚本使用 `$HOME` 路径，无需修改用户名。如果你从旧版迁移过来，可用下面命令把旧的绝对路径替换为当前用户目录：
 
 ```bash
+OLD_HOME_REGEX='/(Users|home)/[^/]+'
 find "$HOME/.codex/skills/plan-review-implement-loop" "$HOME/.codex/agents" \
   -type f \( -name '*.md' -o -name '*.toml' -o -name '*.yaml' -o -name '*.py' \) \
-  -exec perl -pi -e 's#/Users/[^/]+#$ENV{HOME}#g' {} +
+  -exec perl -pi -e "s#${OLD_HOME_REGEX}#\$ENV{HOME}#g" {} +
 ```
 
 使用方式：
@@ -56,14 +59,16 @@ cd plan-review-implement-loop
 
 mkdir -p "$HOME/.claude/skills"
 rsync -a --delete claude-code/ "$HOME/.claude/skills/plan-review-implement-loop-claude-code/"
+rsync -a --delete shared/ "$HOME/.claude/skills/plan-review-implement-loop-claude-code/shared/"
 ```
 
 安装脚本使用 `$HOME` 路径，无需修改用户名。如果你从旧版迁移过来，可用下面命令把旧的绝对路径替换为当前用户目录：
 
 ```bash
+OLD_HOME_REGEX='/(Users|home)/[^/]+'
 find "$HOME/.claude/skills/plan-review-implement-loop-claude-code" \
   -type f \( -name '*.md' -o -name '*.py' \) \
-  -exec perl -pi -e 's#/Users/[^/]+#$ENV{HOME}#g' {} +
+  -exec perl -pi -e "s#${OLD_HOME_REGEX}#\$ENV{HOME}#g" {} +
 ```
 
 使用方式：
@@ -91,6 +96,7 @@ docs/superpowers/plans/YYYY-MM-DD-<topic>.md
 ## 注意事项
 
 - `Review Ledger` 和 `Execution State` 不参与 `plan_rev`。
+- 安装时必须同步 `shared/`，否则可执行门禁脚本和 `compute_plan_rev.py` 兼容入口不可用。
 - 只更新执行勾选态不会触发重新双审。
 - 文档正文发生实质变化后，必须重新冻结 `spec_rev + plan_rev` 并全量双审。
 - prior-open issue 只用于 continuity，不缩小复审范围。

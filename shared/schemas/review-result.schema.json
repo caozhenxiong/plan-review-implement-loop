@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/caozhenxiong/plan-review-implement-loop/shared/schemas/review-result.schema.json",
+  "title": "plan-review-implement-loop review result",
+  "type": "object",
+  "required": ["artifact_version", "source", "verdict", "issues"],
+  "properties": {
+    "artifact_version": {
+      "type": "object",
+      "required": ["review_round", "spec_rev", "plan_rev"],
+      "properties": {
+        "review_round": { "type": "string" },
+        "spec_rev": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "plan_rev": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "code_rev": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "string",
+      "enum": ["architect_reviewer", "architecture_challenger", "reviewer"]
+    },
+    "verdict": { "type": "string", "enum": ["pass", "block"] },
+    "unresolved_high": { "type": "integer", "minimum": 0 },
+    "unresolved_medium": { "type": "integer", "minimum": 0 },
+    "actionable_issues": { "type": "integer", "minimum": 0 },
+    "requires_doc_update": { "type": "boolean" },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "reviewer_issue_id",
+          "issue_id",
+          "severity",
+          "kind",
+          "artifact_anchor",
+          "summary",
+          "status",
+          "same_as_previous",
+          "first_seen_round",
+          "last_seen_round",
+          "supersedes",
+          "merged_into",
+          "new_issue_reason"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["architect_reviewer", "architecture_challenger", "reviewer"]
+          },
+          "reviewer_issue_id": { "type": "string" },
+          "issue_id": { "type": "string" },
+          "severity": { "type": "string", "enum": ["high", "medium", "low"] },
+          "kind": { "type": "string", "enum": ["architecture", "implementation_only", "design_affecting"] },
+          "artifact_anchor": { "type": "string" },
+          "summary": { "type": "string" },
+          "status": { "type": "string", "enum": ["open", "resolved", "superseded"] },
+          "same_as_previous": { "type": "boolean" },
+          "first_seen_round": { "type": "string" },
+          "last_seen_round": { "type": "string" },
+          "supersedes": { "type": ["string", "null"] },
+          "merged_into": { "type": ["string", "null"] },
+          "new_issue_reason": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

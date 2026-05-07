@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/caozhenxiong/plan-review-implement-loop/shared/schemas/gate-state.schema.json",
+  "title": "plan-review-implement-loop gate state",
+  "type": "object",
+  "required": [
+    "current_phase",
+    "gate_state",
+    "review_round",
+    "spec_rev",
+    "plan_rev",
+    "implementation_confirmed_spec_rev",
+    "implementation_confirmed_plan_rev",
+    "latest_architecture_review_round",
+    "latest_architecture_verdict",
+    "latest_code_review_round",
+    "latest_code_rev",
+    "latest_code_review_actionable_issues",
+    "latest_code_review_requires_doc_update",
+    "docs_synced",
+    "verification_evidence",
+    "next_allowed_action"
+  ],
+  "properties": {
+    "current_phase": {
+      "type": "string",
+      "enum": ["phase1", "phase2", "phase3", "phase4", "phase5"]
+    },
+    "gate_state": {
+      "type": "string",
+      "enum": [
+        "blocked",
+        "phase2_rereview_pending",
+        "phase2_blocked",
+        "phase2_passed_unconfirmed",
+        "phase3_allowed",
+        "phase4_blocked_implementation_only",
+        "phase4_blocked_design_affecting",
+        "phase5_completed"
+      ]
+    },
+    "review_round": { "type": "string" },
+    "spec_rev": { "type": "string", "pattern": "^(pending|sha256:[0-9a-f]{64})$" },
+    "plan_rev": { "type": "string", "pattern": "^(pending|sha256:[0-9a-f]{64})$" },
+    "previous_review_round": { "type": ["string", "null"] },
+    "previous_spec_rev": { "type": ["string", "null"] },
+    "previous_plan_rev": { "type": ["string", "null"] },
+    "implementation_confirmed_spec_rev": { "type": ["string", "null"] },
+    "implementation_confirmed_plan_rev": { "type": ["string", "null"] },
+    "latest_architecture_review_round": { "type": ["string", "null"] },
+    "latest_architecture_verdict": { "type": ["string", "null"], "enum": ["pass", "block", null] },
+    "latest_code_review_round": { "type": ["string", "null"] },
+    "latest_code_rev": { "type": ["string", "null"] },
+    "latest_code_review_actionable_issues": { "type": ["integer", "null"], "minimum": 0 },
+    "latest_code_review_requires_doc_update": { "type": ["boolean", "null"] },
+    "docs_synced": { "type": "boolean" },
+    "verification_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "result", "artifact"],
+        "properties": {
+          "command": { "type": "string" },
+          "result": { "type": "string" },
+          "artifact": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "next_allowed_action": {
+      "type": "string",
+      "enum": [
+        "write_canonical_docs",
+        "enter_phase2_review",
+        "update_canonical_docs_and_rerun_phase2",
+        "rerun_full_phase2_dual_review",
+        "enter_implementation_confirmation",
+        "begin_implementation",
+        "fix_code_and_rerun_code_review",
+        "complete"
+      ]
+    },
+    "do_not_start_coding_yet": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

@@ -20,11 +20,11 @@
 - `plan_rev = sha256(normalize(canonical_plan_body_without_ledger_or_execution_state))`
 - `code_rev = git:<sha>` 或 `sha256(normalize(code_bundle))`
 
-`plan_rev` 不再允许靠“自然语言理解后自行实现”的归一化逻辑计算。默认采用 `plan_rev_contract_id = plan-rev/v1`，并要求优先复用唯一参考实现：
+`plan_rev` 不再允许靠“自然语言理解后自行实现”的归一化逻辑计算。默认采用 `plan_rev_contract_id = plan-rev/v1`，并要求优先复用 shared canonical 实现：
 
-- `$HOME/.claude/skills/plan-review-implement-loop-claude-code/references/compute_plan_rev.py`
+- `$HOME/.claude/skills/plan-review-implement-loop-claude-code/shared/scripts/freeze_snapshot.py`
 
-只要该脚本可用，主 agent 就必须使用它生成 `plan_rev`；不得自行实现一个“看起来等价”的版本。
+兼容入口 `$HOME/.claude/skills/plan-review-implement-loop-claude-code/references/compute_plan_rev.py` 只能调用 shared canonical 实现；不得复制或重新实现算法。只要 shared 脚本可用，主 agent 就必须使用它冻结快照或生成 `plan_rev`。
 
 `normalize(...)` 在 `plan-rev/v1` 下的精确定义为：
 
@@ -367,6 +367,9 @@ do_not_start_coding_yet: true|false
 - phase 2 blocked 时，必须是 `update_canonical_docs_and_rerun_phase2`
 - phase 2 passed 但未确认时，必须是 `enter_implementation_confirmation`
 - 只有 phase 3 allowed 时，才可 `begin_implementation`
+- phase 3 中任一实现改动完成后，下一步必须是 `enter_code_review`
+- 没有最新 phase 4 代码审查结果时，禁止 `complete`
+- 只有最新 phase 4 代码审查 `actionable_issues = 0`、且与当前 `spec_rev + plan_rev + code_rev` 匹配时，才可进入 phase 5
 
 如果运行时支持 `Plan Mode`：
 
@@ -388,6 +391,8 @@ do_not_start_coding_yet: true|false
 | phase 2 仍有 unresolved `medium/high` 且本轮有实质性方案变化 | 更新 canonical 文档并重跑 phase 2 |
 | phase 2 通过但未确认实现 | 进入实现确认点；若支持 `Plan Mode`，则在 `Plan Mode` 中确认 |
 | phase 2 通过且用户已确认实现 | 进入 phase 3 |
+| phase 3 已产生实现改动但尚无本轮代码审查 | 冻结 `code_rev`，进入 phase 4；不得输出完成声明 |
+| phase 3 已完成测试或验证但尚无本轮代码审查 | 仍进入 phase 4；测试/验证不能替代代码审查 |
 | 代码审查 `actionable_issues > 0` 且 `requires_doc_update = false` | 修代码并重跑 phase 4 |
 | 代码审查 `actionable_issues > 0` 且 `requires_doc_update = true` | 更新文档并回到 phase 2 |
 | 代码审查 `actionable_issues = 0` | 进入 phase 5 |
@@ -433,12 +438,8 @@ Artifacts:
   plan_rev: sha256:<hash>
 
 Requirements:
-- Start with a YAML block containing:
-  - artifact_version
-  - verdict
-  - unresolved_high
-  - unresolved_medium
-  - issues
+- Start with exactly one `review-result-json` fenced JSON block containing `artifact_version`, `source`, `verdict`, `unresolved_high`, `unresolved_medium`, and `issues`.
+- The block must be strict JSON, not YAML or JSON5. Prose may follow the block, but prose is not a gate fact source.
 - Reuse the same reviewer_issue_id for the same unresolved issue across rounds.
 - Account for every issue_id in the provided prior-open list exactly once.
 - Perform a full rereview of the entire current spec and plan snapshots; do not narrow the review to only the prior-open issues.
@@ -478,7 +479,7 @@ Focus on:
 - failure modes
 
 Requirements:
-- Return the same structured YAML contract as architecture reviewer.
+- Return the same structured `review-result-json` contract as architecture reviewer.
 - Reuse the same reviewer_issue_id for the same unresolved issue across rounds.
 - Account for every issue_id in the provided prior-open list exactly once.
 - Perform a full rereview of the entire current spec and plan snapshots; do not narrow the review to only the prior-open issues.
@@ -514,12 +515,8 @@ Artifacts:
   code_rev: git:<sha>|sha256:<hash>
 
 Requirements:
-- Start with a YAML block containing:
-  - artifact_version
-  - verdict
-  - actionable_issues
-  - requires_doc_update
-  - issues
+- Start with exactly one `review-result-json` fenced JSON block containing `artifact_version`, `source`, `verdict`, `actionable_issues`, `requires_doc_update`, and `issues`.
+- The block must be strict JSON, not YAML or JSON5. Prose may follow the block, but prose is not a gate fact source.
 - Reuse the same reviewer_issue_id for the same unresolved issue across rounds.
 - Account for every issue_id in the provided prior-open list exactly once.
 - Perform a full rereview of the entire current code snapshot against the full current spec snapshot and plan snapshot; do not narrow the review to only the prior-open issues.
