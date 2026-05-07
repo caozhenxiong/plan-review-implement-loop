@@ -2,6 +2,8 @@
 
 `plan-review-implement-loop` 是一个强门禁工程工作流 skill：先冻结 `spec + plan` 两份 canonical 文档，再经过方案双审、实现确认、实现、代码审查和最终文档同步。
 
+![plan-review-implement-loop 2.0 可执行门禁架构](docs/assets/workflow-architecture.png)
+
 仓库同时包含两个运行时版本：
 
 - `codex/`：Codex 版主 workflow skill。
