@@ -71,11 +71,11 @@
 - `plan_rev = sha256(normalize(canonical_plan_body_without_ledger_or_execution_state))`
 - `code_rev = git:<sha>` 或 `sha256(normalize(code_bundle))`
 
-`plan_rev` 不再允许靠“自然语言理解后自行实现”的归一化逻辑计算。默认采用 `plan_rev_contract_id = plan-rev/v1`，并要求优先复用唯一参考实现：
+`plan_rev` 不再允许靠“自然语言理解后自行实现”的归一化逻辑计算。默认采用 `plan_rev_contract_id = plan-rev/v1`，并要求优先复用 shared canonical 实现：
 
-- `$HOME/.codex/skills/plan-review-implement-loop/references/compute_plan_rev.py`
+- `$HOME/.codex/skills/plan-review-implement-loop/shared/scripts/freeze_snapshot.py`
 
-只要该脚本可用，主 agent 就必须使用它生成 `plan_rev`；不得自行实现一个“看起来等价”的版本。
+兼容入口 `$HOME/.codex/skills/plan-review-implement-loop/references/compute_plan_rev.py` 只能调用 shared canonical 实现；不得复制或重新实现算法。只要 shared 脚本可用，主 agent 就必须使用它冻结快照或生成 `plan_rev`。
 
 `normalize(...)` 在 `plan-rev/v1` 下的精确定义为：
 
@@ -477,7 +477,7 @@ phase preflight 必须按阶段执行，不允许使用一份通用清单硬套�
 
 ## Structured Review Contract
 
-三个本地 agent 都必须先输出一个结构化头部，推荐 YAML block。
+三个本地 agent 都必须先输出一个 `review-result-json` fenced JSON block。该 block 是唯一可执行门禁事实源；prose 只能作为补充说明。主 agent 必须先用 `shared/scripts/extract_review_result.py` 提取，再用 `shared/scripts/validate_review_result.py` 校验。YAML 结构化头部只能视为旧格式示例，不得作为可执行门禁输入。
 
 ### `@architect_reviewer` 与 `@architecture_challenger`
 
@@ -643,27 +643,16 @@ Artifacts:
     plan_rev: sha256:<hash>
 
 Requirements:
-- Start with a YAML block containing:
-  artifact_version:
-    review_round: <int>
-    spec_rev: sha256:<hash>
-    plan_rev: sha256:<hash>
-  verdict: pass|block
-  unresolved_high: <int>
-  unresolved_medium: <int>
-  issues:
-    - source: architect_reviewer
-      reviewer_issue_id: <string>
-      issue_id: architect_reviewer:<reviewer_issue_id>
-      severity: high|medium|low
-      kind: architecture
-      artifact_anchor: spec:hNN(.hNN...)#pNN|plan:hNN(.hNN...)#bNN
-      summary: <string>
-      status: open|resolved|superseded
-      same_as_previous: true|false
-      supersedes: <string|null>
-      merged_into: <string|null>
-      new_issue_reason: <string|null>
+- Start with exactly one `review-result-json` fenced JSON block containing:
+  - `artifact_version.review_round`
+  - `artifact_version.spec_rev`
+  - `artifact_version.plan_rev`
+  - `source = architect_reviewer`
+  - `verdict`
+  - `unresolved_high`
+  - `unresolved_medium`
+  - `issues`
+- The block must be strict JSON, not YAML or JSON5. Prose may follow the block, but prose is not a gate fact source.
 - Reuse the same reviewer_issue_id for the same unresolved issue across rounds.
 - Account for every issue_id in the provided prior-open list exactly once.
 - Perform a full rereview of the entire current spec and plan snapshots; do not narrow the review to only the prior-open issues.
@@ -702,27 +691,16 @@ Artifacts:
     plan_rev: sha256:<hash>
 
 Requirements:
-- Start with a YAML block containing:
-  artifact_version:
-    review_round: <int>
-    spec_rev: sha256:<hash>
-    plan_rev: sha256:<hash>
-  verdict: pass|block
-  unresolved_high: <int>
-  unresolved_medium: <int>
-  issues:
-    - source: architecture_challenger
-      reviewer_issue_id: <string>
-      issue_id: architecture_challenger:<reviewer_issue_id>
-      severity: high|medium|low
-      kind: architecture
-      artifact_anchor: spec:hNN(.hNN...)#pNN|plan:hNN(.hNN...)#bNN
-      summary: <string>
-      status: open|resolved|superseded
-      same_as_previous: true|false
-      supersedes: <string|null>
-      merged_into: <string|null>
-      new_issue_reason: <string|null>
+- Start with exactly one `review-result-json` fenced JSON block containing:
+  - `artifact_version.review_round`
+  - `artifact_version.spec_rev`
+  - `artifact_version.plan_rev`
+  - `source = architecture_challenger`
+  - `verdict`
+  - `unresolved_high`
+  - `unresolved_medium`
+  - `issues`
+- The block must be strict JSON, not YAML or JSON5. Prose may follow the block, but prose is not a gate fact source.
 - Reuse the same reviewer_issue_id for the same unresolved issue across rounds.
 - Account for every issue_id in the provided prior-open list exactly once.
 - Perform a full rereview of the entire current spec and plan snapshots; do not narrow the review to only the prior-open issues.
@@ -767,28 +745,17 @@ Artifacts:
 - Code range or changed files: <diff-context>
 
 Requirements:
-- Start with a YAML block containing:
-  artifact_version:
-    review_round: <int>
-    spec_rev: sha256:<hash>
-    plan_rev: sha256:<hash>
-    code_rev: git:<sha>|sha256:<hash>
-  verdict: pass|block
-  actionable_issues: <int>
-  requires_doc_update: true|false
-  issues:
-    - source: reviewer
-      reviewer_issue_id: <string>
-      issue_id: reviewer:<reviewer_issue_id>
-      severity: high|medium|low
-      artifact_anchor: code:<path>#L<start>-L<end>
-      summary: <string>
-      status: open|resolved|superseded
-      kind: implementation_only|design_affecting
-      same_as_previous: true|false
-      supersedes: <string|null>
-      merged_into: <string|null>
-      new_issue_reason: <string|null>
+- Start with exactly one `review-result-json` fenced JSON block containing:
+  - `artifact_version.review_round`
+  - `artifact_version.spec_rev`
+  - `artifact_version.plan_rev`
+  - `artifact_version.code_rev`
+  - `source = reviewer`
+  - `verdict`
+  - `actionable_issues`
+  - `requires_doc_update`
+  - `issues`
+- The block must be strict JSON, not YAML or JSON5. Prose may follow the block, but prose is not a gate fact source.
 - Reuse the same reviewer_issue_id for the same unresolved issue across rounds.
 - Account for every issue_id in the provided prior-open list exactly once.
 - Perform a full rereview of the entire current code snapshot against the full current spec snapshot, plan snapshot, and checklist; do not narrow the review to only the prior-open issues.
@@ -807,7 +774,7 @@ Requirements:
 - Restrict structured issues to actionable gate issues only; keep style-only comments and optional suggestions in prose.
 - If an accepted trade-off excerpt is provided, treat it as optional read-only context; do not reopen an accepted pure trade-off unless the implementation exceeds the accepted boundary or introduces a new engineering risk.
 - If the current implementation cannot be judged safely because the current docs are insufficient, escalate it as `design_affecting` instead of silently downgrading it to `implementation_only`.
-- Use the YAML fields as the gate contract; prose findings come after that.
+- Use the JSON fields as the gate contract; prose findings come after that.
 - If the structured block is incomplete, the review is unusable.
 - The prior-open issue inputs are continuity aids only; they do not reduce review scope.
 ```
