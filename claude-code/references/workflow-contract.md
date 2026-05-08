@@ -139,19 +139,38 @@ Claude Code 版不强绑定某一种具体的子代理实现，但对 reviewer �
 - `same_as_previous`
 - `supersedes` / `merged_into`
 - `new_issue_reason`
-- `disposition`
+- `disposition`: `open` / `fixed` / `superseded` / `accepted` / `escalated`
+
+这个账本是完成声明和回环升级的依据。
 
 约束：
 
-- `Review Ledger` 不参与 `plan_rev`
-- `accepted` 只用于用户在实现确认点接受的 `low-risk`
-- `accepted` 不属于 reviewer 原始输出状态
+- `Review Ledger` 用于状态追踪，不参与 `plan_rev`
+- `Review Ledger` 更新本身不会让当前方案快照失效
+- 只有实现计划正文变更，才会生成新的 `plan_rev`
+- 如果 `Review Ledger` 分隔符缺失，或账本内容混入正文导致无法稳定排除，则 `plan_rev` 视为未定义，本轮自动流程直接阻塞
+- `accepted` 只用于用户在实现确认点明确接受的 `low-risk` 问题；它不是 reviewer 输出状态，也不能用于 `medium/high`
+- `accepted` 只对当时确认的同一组 `spec_rev + plan_rev` 有效；如果文档正文变化并重新进入方案双审，已接受的 `low-risk` 必须重新评估并重新展示
+- 提供给 reviewer 的“open issue ledger excerpt”只包含 `status = open` 的问题；`accepted` 项只保留在账本中用于审计，不再当作待处理 open issue
 - 每个 reviewer 返回的每个 issue，都必须在 `Review Ledger` 中落成一条独立明细记录；不允许只保留汇总计数
 - 如果本轮结构化评审返回了 issue，但 `Review Ledger` 没有对应的 issue 级明细回写，则本轮回环视为未完成并阻塞
 - 如果本轮代码审查返回了 CR issue，但 `Review Ledger` 没有对应的 code-review issue 明细回写，则 phase 4 视为未完成并阻塞
 - 轮次汇总表可以保留，但它只是二级视图，不能作为门禁依据
 - 门禁、回环、升级和 continuity 只认 issue 明细视图，不认汇总计数
 - 如果读到历史 ledger 只有汇总表而没有 issue 明细，主 agent 的首要动作是补齐该 round 的 issue 明细；补齐前不得继续追加新 round，也不得把该 ledger 当作有效 prior-open excerpt 使用
+- 当存在未关闭 issue 且 artifact 发生变化时，主 agent 必须在派发前准备 `anchor_remap`，说明所有 prior-open anchors 如何映射到当前快照；缺少 remap 时自动回环阻塞
+- `anchor_remap` 必须对每个 prior-open anchor 恰好给出一种结果：
+  - `mapped_to: <current_anchor>`
+  - `superseded`
+  - `merged_into: <current_issue_id>`
+  - `retired`
+- `anchor_remap` 不能遗漏任何 prior-open anchor，也不能对同一个 prior-open anchor 给出多个结果；否则阻塞
+- `Review Ledger` 的默认回填映射固定为：
+  - `status = open` -> `disposition = open`
+  - `status = resolved` -> `disposition = fixed`
+  - `status = superseded` -> `disposition = superseded`
+  - `status = accepted` -> `disposition = accepted`
+  - 只有自动回环停止并转人工时，主 agent 才可把未关闭问题写成 `disposition = escalated`
 
 ### Current Effective Issue State
 
@@ -203,6 +222,37 @@ Claude Code 版不强绑定某一种具体的子代理实现，但对 reviewer �
 - 只更新勾选、时间戳、负责人、attempt、run note，不会使方案快照失效
 - 如果修改的是步骤文本、顺序、范围、接口、验收条件或交付路径，则必须修改计划正文并重算 `plan_rev`
 - 若 `Execution State` 包含最新 gate snapshot，它是当前阶段状态的权威摘要；旧的标题、阶段描述或未回填 checklist 若与其冲突，不得据此回退 gate
+
+### Stable Issue Identity
+
+回环、升级和“同一问题连续两轮未关闭”的判断，只认稳定 issue 身份：
+
+- `source` 取值固定为 `architect_reviewer`、`architecture_challenger`、`reviewer`
+- `reviewer_issue_id` 是同一 reviewer 在跨轮次追踪同一问题时必须复用的本地稳定标识
+- `issue_id` 是全局账本标识，默认格式 `<source>:<reviewer_issue_id>`
+- 自动流程中不做跨 source 的语义去重；不同 reviewer 命中相似问题时，默认保留为两个独立 `issue_id`
+- 同一问题跨轮次必须复用同一个 `source + reviewer_issue_id + issue_id`
+- 问题被拆分时，新 issue 必须在 `supersedes` 中引用旧 `issue_id`
+- 多个问题合并时，被合并的问题必须标记 `merged_into`
+- `same_as_previous = true` 但 `issue_id` 变化，视为不一致并阻塞
+- 主 agent 只有在 reviewer 明确给出 `merged_into` / `supersedes` 时才允许归并账本项；否则不得主观合并跨 reviewer 问题
+- 无法稳定映射 issue 身份时，主 agent 必须要求 reviewer 补齐，或直接升级为人工决策；不能主观判定“差不多是同一个问题”
+
+### Material Change
+
+以下变化会使既有 review 结果失效，必须重新冻结快照并全量复审：
+
+- `spec` 正文变化
+- `plan` 正文变化
+- 代码审查阶段的 `code_rev` 变化
+- 改变步骤文本、顺序、范围、接口、验收条件或交付路径
+
+以下变化不单独触发新的 `plan_rev`：
+
+- 只更新 `Review Ledger`
+- 只更新 `Execution State`
+- 只改变 Markdown 任务勾选态 `[ ]` / `[x]`
+- 只补充运行备注、时间戳、attempt 或验证证据
 
 ## Severity Policy
 
