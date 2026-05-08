@@ -404,10 +404,10 @@ Fail-closed 规则：
 
 ```yaml
 current_phase: phase1|phase2|phase3|phase4|phase5
-gate_state: blocked|phase2_blocked|phase2_passed_unconfirmed|phase3_allowed|completed
+gate_state: blocked|phase2_rereview_pending|phase2_blocked|phase2_passed_unconfirmed|phase3_allowed|phase4_required|phase4_blocked_implementation_only|phase4_blocked_design_affecting|phase5_completed
 spec_rev: sha256:<hash>|pending
 plan_rev: sha256:<hash>|pending
-next_allowed_action: write_canonical_docs|enter_phase2_review|update_canonical_docs_and_rerun_phase2|enter_implementation_confirmation|begin_implementation|rerun_phase4|complete
+next_allowed_action: write_canonical_docs|enter_phase2_review|update_canonical_docs_and_rerun_phase2|rerun_full_phase2_dual_review|enter_implementation_confirmation|begin_implementation|write_code_rev_and_rerun_gate_check|enter_code_review|fix_code_and_rerun_code_review|complete
 do_not_start_coding_yet: true|false
 ```
 
@@ -417,9 +417,13 @@ do_not_start_coding_yet: true|false
 - phase 2 blocked 时，必须是 `update_canonical_docs_and_rerun_phase2`
 - phase 2 passed 但未确认时，必须是 `enter_implementation_confirmation`
 - 只有 phase 3 allowed 时，才可 `begin_implementation`
-- phase 3 中任一实现改动完成后，下一步必须是 `enter_code_review`
+- phase 3 中任一实现改动完成后，必须先写入 `latest_code_rev` 并将 `implementation_changed = true`
+- 如果 `implementation_changed = true` 但 `latest_code_rev` 缺失，下一步必须是 `write_code_rev_and_rerun_gate_check`，不得进入 phase 4
+- 如果 `latest_code_rev` 非空但缺少匹配的最新代码审查结果，下一步必须是 `enter_code_review`
 - 没有最新 phase 4 代码审查结果时，禁止 `complete`
-- 只有最新 phase 4 代码审查 `actionable_issues = 0`、且与当前 `spec_rev + plan_rev + code_rev` 匹配时，才可进入 phase 5
+- phase 4 代码审查完成后，必须写入 `latest_code_review_spec_rev`、`latest_code_review_plan_rev`、`latest_code_review_code_rev`
+- 只有最新 phase 4 代码审查 `actionable_issues = 0`、且 `latest_code_review_spec_rev + latest_code_review_plan_rev + latest_code_review_code_rev` 与当前 `spec_rev + plan_rev + latest_code_rev` 匹配时，才可进入 phase 5
+- 不允许用缺失字段表达“无实现改动”；无改动必须显式保持 `latest_code_rev = null` 与 `implementation_changed = false`
 
 如果运行时支持 `Plan Mode`：
 
@@ -441,8 +445,10 @@ do_not_start_coding_yet: true|false
 | phase 2 仍有 unresolved `medium/high` 且本轮有实质性方案变化 | 更新 canonical 文档并重跑 phase 2 |
 | phase 2 通过但未确认实现 | 进入实现确认点；若支持 `Plan Mode`，则在 `Plan Mode` 中确认 |
 | phase 2 通过且用户已确认实现 | 进入 phase 3 |
-| phase 3 已产生实现改动但尚无本轮代码审查 | 冻结 `code_rev`，进入 phase 4；不得输出完成声明 |
+| phase 3 已产生实现改动但 `latest_code_rev` 缺失 | 阻塞为 `write_code_rev_and_rerun_gate_check`，先补写代码快照 |
+| phase 3 已产生实现改动且尚无本轮代码审查 | 冻结 `code_rev`，写入 `latest_code_rev` 与 `implementation_changed = true`，进入 phase 4；不得输出完成声明 |
 | phase 3 已完成测试或验证但尚无本轮代码审查 | 仍进入 phase 4；测试/验证不能替代代码审查 |
+| `latest_code_review_*_rev` 与当前 `spec_rev + plan_rev + latest_code_rev` 不匹配 | 进入 `phase4_required`，重跑代码审查 |
 | 代码审查 `actionable_issues > 0` 且 `requires_doc_update = false` | 修代码并重跑 phase 4 |
 | 代码审查 `actionable_issues > 0` 且 `requires_doc_update = true` | 更新文档并回到 phase 2 |
 | 代码审查 `actionable_issues = 0` | 进入 phase 5 |

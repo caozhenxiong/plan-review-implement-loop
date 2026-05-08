@@ -38,8 +38,9 @@ description: Use when an engineering task in Claude Code must freeze spec and pl
 - `plan_rev` 必须排除 `Review Ledger` / `Execution State` 区块，并忽略纯 Markdown 勾选态 `[ ]` / `[x]` 的变化。
 - 未解决的 `high` / `medium` 方案问题默认只阻塞实现，不阻塞继续修改 `spec + plan` 并重跑方案双审。
 - 方案双审通过后，仍不得直接写代码；必须先进入实现确认点，等待用户基于当前 `spec_rev + plan_rev` 明确确认。若 Claude Code 提供显式 `Plan Mode`，实现确认点也必须优先在其中完成。
-- phase 3 只允许产生代码/文档改动和验证证据；一旦本轮实现改动完成，唯一合法出口是冻结 `code_rev` 并进入 phase 4 代码审查。不得在未完成 phase 4 的情况下输出完成声明、交付总结或“已完成”。
-- 任何声称“实现完成”的响应，如果没有最新 phase 4 代码审查结果，必须自动解释为 `next_allowed_action = enter_code_review`，而不是 `complete`。
+- phase 3 只允许产生代码/文档改动和验证证据；一旦本轮实现改动完成，必须先写入 `latest_code_rev` 并将 `implementation_changed = true`，再进入 phase 4 代码审查。不得在未完成 phase 4 的情况下输出完成声明、交付总结或“已完成”。
+- 如果 `implementation_changed = true` 但 `latest_code_rev` 缺失，必须 fail-closed 为 `next_allowed_action = write_code_rev_and_rerun_gate_check`；不得进入 phase 4，因为代码审查没有可绑定的代码快照。
+- 任何声称“实现完成”的响应，如果已有 `latest_code_rev` 但没有最新 phase 4 代码审查结果，必须自动解释为 `next_allowed_action = enter_code_review`，而不是 `complete`。
 - phase 5 完成声明必须依赖最新 phase 4 代码审查 `actionable_issues = 0`；本地测试通过、构建通过、手工验证通过都不能替代 phase 4。
 - 若 canonical 双文档正文发生实质变化，上一轮方案双审立即失效，必须回到 phase 2。
 - 计划文档必须包含显式分隔的 `Review Ledger` 与 `Execution State` 区块；若缺失，自动回环阻塞。
@@ -94,7 +95,8 @@ description: Use when an engineering task in Claude Code must freeze spec and pl
   - 用户已经基于当前 `spec_rev + plan_rev` 明确确认开始实现；若运行时支持 `Plan Mode`，该确认应优先在 `Plan Mode` 中完成
   - 当前 canonical `spec + plan` 仍与最近通过版 `spec_rev + plan_rev` 匹配
 - 实现过程中，每形成一轮新的代码修改，先同步更新文档，再继续下一轮实现或进入代码审查。
-- 本轮实现改动完成后，主 agent 必须立即冻结 `code_rev` 并进入 phase 4；不允许把验证结果当作最终完成信号。
+- 本轮实现改动完成后，主 agent 必须立即冻结 `code_rev`，写入 `latest_code_rev`，将 `implementation_changed = true`，并进入 phase 4；不允许把验证结果当作最终完成信号。
+- 无实现改动时，不允许用缺失字段表达无改动；必须显式保持 `latest_code_rev = null` 且 `implementation_changed = false`。
 - 如果运行时无法派发独立 `code_reviewer`，主 agent 也必须按 phase 4 的结构化代码审查 contract 自查，并把结果写入 `Review Ledger`；不得跳过 phase 4。
 - 实现必须保持 surgical：每个代码、文档或 prompt 改动都应能追溯到用户请求、`spec`、`plan` 或 checklist；无关清理、顺手格式化、相邻逻辑整理不得混入当前实现。
 - 进度勾选、时间戳、attempt、run note 优先写入 `Execution State` 区块；仅这些内容变化不会触发新的 `plan_rev`。
@@ -112,6 +114,7 @@ description: Use when an engineering task in Claude Code must freeze spec and pl
 - 代码审查必须按明确 success criteria 判断完成度；如果当前文档缺少足够验收标准，应走 `design_affecting` / doc insufficiency 路径，而不是凭感觉放行。
 - 代码审查返回的每一个 CR issue，都必须在 `Review Ledger` 的 issue 明细视图中逐条回写；未完成这一步前，不得把本轮 CR 视为完成。
 - 若 `actionable_issues = 0`，进入 phase 5。
+- phase 4 代码审查完成后，必须写入 `latest_code_review_spec_rev`、`latest_code_review_plan_rev`、`latest_code_review_code_rev`。只有这三个字段与当前 `spec_rev + plan_rev + latest_code_rev` 完全匹配，才允许清除 `implementation_changed` 或进入 phase 5 判定。
 - 若 `actionable_issues > 0` 且 `requires_doc_update = false`：
   - 只修代码与测试
   - 同步更新文档
@@ -142,10 +145,10 @@ description: Use when an engineering task in Claude Code must freeze spec and pl
 
 ```yaml
 current_phase: phase1|phase2|phase3|phase4|phase5
-gate_state: blocked|phase2_blocked|phase2_passed_unconfirmed|phase3_allowed|phase4_required|phase4_blocked_implementation_only|phase4_blocked_design_affecting|phase5_completed
+gate_state: blocked|phase2_rereview_pending|phase2_blocked|phase2_passed_unconfirmed|phase3_allowed|phase4_required|phase4_blocked_implementation_only|phase4_blocked_design_affecting|phase5_completed
 spec_rev: sha256:<hash>|pending
 plan_rev: sha256:<hash>|pending
-next_allowed_action: write_canonical_docs|enter_phase2_review|update_canonical_docs_and_rerun_phase2|enter_implementation_confirmation|begin_implementation|enter_code_review|rerun_phase4|complete
+next_allowed_action: write_canonical_docs|enter_phase2_review|update_canonical_docs_and_rerun_phase2|rerun_full_phase2_dual_review|enter_implementation_confirmation|begin_implementation|write_code_rev_and_rerun_gate_check|enter_code_review|fix_code_and_rerun_code_review|complete
 do_not_start_coding_yet: true|false
 ```
 
@@ -155,8 +158,9 @@ do_not_start_coding_yet: true|false
 - phase 2 blocked 时只能是 `update_canonical_docs_and_rerun_phase2`
 - phase 2 passed but not confirmed 时只能是 `enter_implementation_confirmation`
 - 只有 phase 3 allowed 时才允许 `begin_implementation`
-- phase 3 实现改动完成后只能是 `enter_code_review`
-- 只有 phase 4 代码审查 `actionable_issues = 0` 后才允许 `complete`
+- phase 3 实现改动完成但缺少 `latest_code_rev` 时只能是 `write_code_rev_and_rerun_gate_check`
+- phase 3 实现改动完成且已有 `latest_code_rev` 后只能是 `enter_code_review`
+- 只有 phase 4 代码审查 `actionable_issues = 0` 且代码审查三元组匹配当前 `spec_rev + plan_rev + latest_code_rev` 后才允许 `complete`
 
 ## Do Not
 

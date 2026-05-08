@@ -365,8 +365,12 @@ phase preflight 必须按阶段执行，不允许使用一份通用清单硬套�
 3. 阶段 3：确认最新通过的方案双审仍匹配当前 `spec_rev + plan_rev`
    - 并确认用户已经针对同一组 `spec_rev + plan_rev` 明确批准开始实现
    - 并确认当前 canonical `spec + plan` 仍与最新通过的 `spec_rev + plan_rev` 匹配
+   - 产生任何实现改动后，进入 phase 4 前必须写入 `latest_code_rev` 并将 `implementation_changed = true`
+   - 如果 `implementation_changed = true` 但 `latest_code_rev` 缺失，必须 fail-closed 为 `write_code_rev_and_rerun_gate_check`，不得进入代码审查
 4. 阶段 4：确认当前代码变更已准备好审查、最新通过的方案双审仍匹配当前 `spec_rev + plan_rev`、`@reviewer` 可用、并已准备好权威代码快照、未关闭代码问题摘录和必要的 `anchor_remap`；`code_rev` 在 preflight 之后立刻冻结
    - 并确认当前 `code_rev` 对应的两份文档都已同步到最新代码状态
+   - phase 4 代码审查完成后，必须写入 `latest_code_review_spec_rev`、`latest_code_review_plan_rev`、`latest_code_review_code_rev`
+   - 只有上述三元组与当前 `spec_rev + plan_rev + latest_code_rev` 匹配，才允许清除 `implementation_changed` 或进入 phase 5
 5. 阶段 5：确认最新通过的方案双审与代码审查已闭环，并准备执行最终验证
 
 ### Stage 1 Confirmation Contract
@@ -407,6 +411,8 @@ phase preflight 必须按阶段执行，不允许使用一份通用清单硬套�
   - phase 2 blocked：`update_canonical_docs_and_rerun_phase2`
   - phase 2 passed but not confirmed：`enter_implementation_confirmation`
   - phase 3 allowed：`begin_implementation`
+  - phase 3 implementation changed but missing code snapshot：`write_code_rev_and_rerun_gate_check`
+  - phase 3 implementation changed with `latest_code_rev` but no matching code review：`enter_code_review`
 - 如果当前并不允许写代码，handoff 里必须显式写出 `do_not_start_coding_yet: true`
 - 如果 handoff 缺少 skill 链接、缺少 gate state、或把不允许的动作写成下一步，这份 handoff 视为无效，不应交给用户点击“实施计划”
 - 主 agent 不得输出诸如“按你给的实施方案直接实现”“直接收口实现”这类会把下一轮导向普通编码流程的 handoff 文案，除非当前 gate state 已经明确允许 `begin_implementation`

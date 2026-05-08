@@ -34,6 +34,7 @@
         "phase2_blocked",
         "phase2_passed_unconfirmed",
         "phase3_allowed",
+        "phase4_required",
         "phase4_blocked_implementation_only",
         "phase4_blocked_design_affecting",
         "phase5_completed"
@@ -49,8 +50,12 @@
     "implementation_confirmed_plan_rev": { "type": ["string", "null"] },
     "latest_architecture_review_round": { "type": ["string", "null"] },
     "latest_architecture_verdict": { "type": ["string", "null"], "enum": ["pass", "block", null] },
+    "implementation_changed": { "type": "boolean" },
     "latest_code_review_round": { "type": ["string", "null"] },
     "latest_code_rev": { "type": ["string", "null"] },
+    "latest_code_review_spec_rev": { "type": ["string", "null"], "pattern": "^(sha256:[0-9a-f]{64})$" },
+    "latest_code_review_plan_rev": { "type": ["string", "null"], "pattern": "^(sha256:[0-9a-f]{64})$" },
+    "latest_code_review_code_rev": { "type": ["string", "null"] },
     "latest_code_review_actionable_issues": { "type": ["integer", "null"], "minimum": 0 },
     "latest_code_review_requires_doc_update": { "type": ["boolean", "null"] },
     "docs_synced": { "type": "boolean" },
@@ -76,6 +81,8 @@
         "rerun_full_phase2_dual_review",
         "enter_implementation_confirmation",
         "begin_implementation",
+        "write_code_rev_and_rerun_gate_check",
+        "enter_code_review",
         "fix_code_and_rerun_code_review",
         "complete"
       ]

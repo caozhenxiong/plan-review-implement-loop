@@ -81,7 +81,6 @@ def parse_issue_details(ledger: str) -> list[dict[str, str]]:
         expected = f"{issue['source']}:{issue['reviewer_issue_id']}"
         _require(issue["issue_id"] == expected, f"issue_id mismatch: {issue['issue_id']}")
         issues.append(issue)
-    _require(issues, "Issue Details has no issue rows")
     return issues
 
 
@@ -105,6 +104,11 @@ def parse_gate_state(state_block: str) -> dict[str, object]:
     for field in ("latest_code_review_requires_doc_update",):
         value = state.get(field)
         _require(value is None or isinstance(value, bool), f"{field} must be null or bool")
+    value = state.get("implementation_changed", False)
+    _require(isinstance(value, bool), "implementation_changed must be bool when present")
+    for field in ("latest_code_review_spec_rev", "latest_code_review_plan_rev", "latest_code_review_code_rev"):
+        value = state.get(field)
+        _require(value is None or isinstance(value, str), f"{field} must be null or string")
     return state
 
 
@@ -131,6 +135,16 @@ def compute_gate(plan_text: str) -> dict[str, object]:
     unresolved_medium = sum(1 for issue in open_arch if issue["severity"] == "medium")
     actionable_issues = len(open_code)
     requires_doc_update = any(issue["kind"] == "design_affecting" for issue in open_code)
+    latest_code_rev = state.get("latest_code_rev")
+    implementation_changed = bool(state.get("implementation_changed", False))
+    code_review_tuple = (
+        state.get("latest_code_review_spec_rev"),
+        state.get("latest_code_review_plan_rev"),
+        state.get("latest_code_review_code_rev"),
+    )
+    current_tuple = (state["spec_rev"], state["plan_rev"], latest_code_rev)
+    has_code_review_tuple = any(value is not None for value in code_review_tuple)
+    code_review_tuple_matches = code_review_tuple == current_tuple
 
     if unresolved_high or unresolved_medium:
         gate_state = "phase2_blocked"
@@ -141,7 +155,22 @@ def compute_gate(plan_text: str) -> dict[str, object]:
     elif actionable_issues:
         gate_state = "phase4_blocked_implementation_only"
         next_action = "fix_code_and_rerun_code_review"
-    elif state.get("latest_code_review_actionable_issues") == 0 and state.get("docs_synced") and state.get("verification_evidence"):
+    elif implementation_changed and not latest_code_rev:
+        gate_state = "blocked"
+        next_action = "write_code_rev_and_rerun_gate_check"
+    elif latest_code_rev and not has_code_review_tuple:
+        gate_state = "phase4_required"
+        next_action = "enter_code_review"
+    elif latest_code_rev and not code_review_tuple_matches:
+        gate_state = "phase4_required"
+        next_action = "enter_code_review"
+    elif (
+        state.get("latest_code_review_actionable_issues") == 0
+        and latest_code_rev
+        and code_review_tuple_matches
+        and state.get("docs_synced")
+        and state.get("verification_evidence")
+    ):
         gate_state = "phase5_completed"
         next_action = "complete"
     elif state.get("implementation_confirmed_spec_rev") == state["spec_rev"] and state.get("implementation_confirmed_plan_rev") == state["plan_rev"]:
